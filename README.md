@@ -1,0 +1,4 @@
+CRGBName
+========
+
+String to RGB
