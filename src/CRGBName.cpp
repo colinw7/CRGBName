@@ -763,8 +763,8 @@ rgb_names[] = {
   { 144, 238, 144, "lightgreen"            , },
 };
 
-CRGBName::ColorMap CRGBName::color_map_;
-bool               CRGBName::color_map_set_ = false;
+CRGBName::ColorMap CRGBName::colormap_;
+bool               CRGBName::colormapSet_ = false;
 
 bool
 CRGBName::
@@ -786,41 +786,50 @@ bool
 CRGBName::
 lookup(const std::string &name, double *r, double *g, double *b, double *a)
 {
-  double r1 = 0;
-  double g1 = 0;
-  double b1 = 0;
-  double a1 = 0;
+  double r1 = 0, g1 = 0, b1 = 0, a1 = 0;
 
-  int len = name.size();
+  std::string name1 = name;
 
-  if (len > 0 && name[0] == '#') {
+  std::string::size_type p = name1.find('-');
+
+  while (p != std::string::npos) {
+    name1 = name.substr(0, p) + name.substr(p + 1);
+
+    p = name1.find('-');
+  }
+
+  //---
+
+  int len = name1.size();
+
+  if (len > 0 && name1[0] == '#') {
     std::string r_str, g_str, b_str, a_str;
 
-    std::string name1 = name.substr(1);
+    std::string name2 = name1.substr(1);
 
-    if (name1.size() <= 4) {
-      while (name1.size() < 3)
-        name1 = "0" + name1;
+    if (name2.size() <= 4) {
+      while (name2.size() < 3)
+        name2 = "0" + name2;
 
-      r_str = name1.substr(0, 1) + name1.substr(0, 1);
-      g_str = name1.substr(1, 1) + name1.substr(1, 1);
-      b_str = name1.substr(2, 1) + name1.substr(2, 1);
+      r_str = name2.substr(0, 1) + name2.substr(0, 1);
+      g_str = name2.substr(1, 1) + name2.substr(1, 1);
+      b_str = name2.substr(2, 1) + name2.substr(2, 1);
 
-      if (name1.size() == 4)
-        a_str = name1.substr(3, 1) + name1.substr(3, 1);
+      if (name2.size() == 4)
+        a_str = name2.substr(3, 1) + name2.substr(3, 1);
       else
         a_str = "ff";
     }
     else {
-      while (name1.size() < 6)
-        name1 = "0" + name1;
+      while (name2.size() < 6)
+        name2 = "0" + name2;
 
-      r_str = name1.substr(0, 2);
-      g_str = name1.substr(2, 2);
-      b_str = name1.substr(4, 2);
+      r_str = name2.substr(0, 2);
+      g_str = name2.substr(2, 2);
+      b_str = name2.substr(4, 2);
 
-      if (name1.size() >= 8)
-        a_str = name1.substr(6, 2);
+      if (name2.size() >= 8)
+        a_str = name2.substr(6, 2);
       else
         a_str = "ff";
     }
@@ -842,20 +851,20 @@ lookup(const std::string &name, double *r, double *g, double *b, double *a)
     return true;
   }
 
-  if (! color_map_set_) {
+  if (! colormapSet_) {
     int num_rgb_names = sizeof(rgb_names)/sizeof(CRGBNameData);
 
     for (int i = 0; i < num_rgb_names; i++)
-      color_map_[rgb_names[i].name] = i;
+      colormap_[rgb_names[i].name] = i;
 
-    color_map_set_ = true;
+    colormapSet_ = true;
   }
 
-  std::string name1 = CStrUtil::toLower(name);
+  std::string name2 = CStrUtil::toLower(name1);
 
-  ColorMap::iterator pcolor = color_map_.find(name1);
+  ColorMap::iterator pcolor = colormap_.find(name2);
 
-  if (pcolor == color_map_.end()) {
+  if (pcolor == colormap_.end()) {
     std::cerr << "Unknown color " << name << std::endl;
     return false;
   }
@@ -868,4 +877,27 @@ lookup(const std::string &name, double *r, double *g, double *b, double *a)
   if (a) *a = 1.0;
 
   return true;
+}
+
+int
+CRGBName::
+numColorNames()
+{
+  return sizeof(rgb_names)/sizeof(CRGBNameData);
+}
+
+std::string
+CRGBName::
+colorName(int i)
+{
+  return rgb_names[i].name;
+}
+
+CRGBA
+CRGBName::
+colorRGBA(int i)
+{
+  const CRGBNameData &data = rgb_names[i];
+
+  return CRGBA(data.r/255.0, data.g/255.0, data.b/255.0);
 }
