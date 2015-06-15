@@ -22,6 +22,7 @@ $(CDEBUG) \
 -I$(INC_DIR) \
 -I. \
 -I../../CStrUtil/include \
+-I../../CMath/include \
 -I../../CUtil/include \
 
 clean:
