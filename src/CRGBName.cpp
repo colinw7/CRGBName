@@ -865,7 +865,7 @@ lookup(const std::string &name, double *r, double *g, double *b, double *a)
   ColorMap::iterator pcolor = colormap_.find(name2);
 
   if (pcolor == colormap_.end()) {
-    std::cerr << "Unknown color " << name << std::endl;
+    //std::cerr << "Unknown color '" << name << "'" << std::endl;
     return false;
   }
 
