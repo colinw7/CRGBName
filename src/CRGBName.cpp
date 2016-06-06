@@ -7,6 +7,23 @@ struct CRGBNameData {
   const char *name;
 };
 
+// HTML names (unique name or if different value from X11)
+static CRGBNameData
+html_rgb_names[] = {
+  { 192, 192, 192, "silver"  },
+  { 128, 128, 128, "gray"    },
+  { 128,   0,   0, "maroon"  },
+  { 128, 128,   0, "olive"   },
+  {   0, 255,   0, "lime"    },
+  {   0, 128,   0, "green"   },
+  {   0, 255, 255, "aqua"    },
+  {   0, 128, 128, "teal"    },
+  { 255,   0, 255, "fuchsia" },
+  { 128,   0, 128, "purple"  },
+  { 220,  20,  60, "crimson" },
+};
+
+// X11 names
 static CRGBNameData
 rgb_names[] = {
   { 255, 250, 250, "snow"                  , },
@@ -763,16 +780,17 @@ rgb_names[] = {
   { 144, 238, 144, "lightgreen"            , },
 };
 
+CRGBName::ColorMap CRGBName::html_colormap_;
 CRGBName::ColorMap CRGBName::colormap_;
 bool               CRGBName::colormapSet_ = false;
 
 bool
 CRGBName::
-lookup(const std::string &name, float *r, float *g, float *b, float *a)
+lookupHtml(const std::string &name, float *r, float *g, float *b, float *a)
 {
   double r1, g1, b1, a1;
 
-  bool flag = lookup(name, &r1, &g1, &b1, &a1);
+  bool flag = lookupName(name, &r1, &g1, &b1, &a1, /*html*/true);
 
   if (r) *r = r1;
   if (g) *g = g1;
@@ -784,8 +802,39 @@ lookup(const std::string &name, float *r, float *g, float *b, float *a)
 
 bool
 CRGBName::
+lookup(const std::string &name, float *r, float *g, float *b, float *a)
+{
+  double r1, g1, b1, a1;
+
+  bool flag = lookupName(name, &r1, &g1, &b1, &a1, /*html*/false);
+
+  if (r) *r = r1;
+  if (g) *g = g1;
+  if (b) *b = b1;
+  if (a) *a = a1;
+
+  return flag;
+}
+
+bool
+CRGBName::
+lookupHtml(const std::string &name, double *r, double *g, double *b, double *a)
+{
+  return lookupName(name, r, g, b, a, /*html*/true);
+}
+
+bool
+CRGBName::
 lookup(const std::string &name, double *r, double *g, double *b, double *a)
 {
+  return lookupName(name, r, g, b, a, /*html*/false);
+}
+
+bool
+CRGBName::
+lookupName(const std::string &name, double *r, double *g, double *b, double *a, bool html)
+{
+  // remove '-' from names (TODO: optional)
   double r1 = 0, g1 = 0, b1 = 0, a1 = 0;
 
   std::string name1 = name;
@@ -800,6 +849,7 @@ lookup(const std::string &name, double *r, double *g, double *b, double *a)
 
   //---
 
+  // check for '#RGB' '#RRGGBB'
   int len = name1.size();
 
   if (len > 0 && name1[0] == '#') {
@@ -807,7 +857,9 @@ lookup(const std::string &name, double *r, double *g, double *b, double *a)
 
     std::string name2 = name1.substr(1);
 
+    // '#RGB'
     if (name2.size() <= 4) {
+      // pad with zeros
       while (name2.size() < 3)
         name2 = "0" + name2;
 
@@ -820,7 +872,9 @@ lookup(const std::string &name, double *r, double *g, double *b, double *a)
       else
         a_str = "ff";
     }
+    // '#RRGGBB'
     else {
+      // pad with zeros
       while (name2.size() < 6)
         name2 = "0" + name2;
 
@@ -851,38 +905,84 @@ lookup(const std::string &name, double *r, double *g, double *b, double *a)
     return true;
   }
 
+  //---
+
+  // init color map if needed
   if (! colormapSet_) {
+    int num_html_rgb_names = sizeof(html_rgb_names)/sizeof(CRGBNameData);
+
+    for (int i = 0; i < num_html_rgb_names; ++i)
+      html_colormap_[html_rgb_names[i].name] = i;
+
+    //---
+
     int num_rgb_names = sizeof(rgb_names)/sizeof(CRGBNameData);
 
-    for (int i = 0; i < num_rgb_names; i++)
+    for (int i = 0; i < num_rgb_names; ++i)
       colormap_[rgb_names[i].name] = i;
 
     colormapSet_ = true;
   }
 
+  //---
+
+  // lookup lower case name
   std::string name2 = CStrUtil::toLower(name1);
 
-  ColorMap::iterator pcolor = colormap_.find(name2);
+  if (html) {
+    auto pcolor = html_colormap_.find(name2);
 
-  if (pcolor == colormap_.end()) {
-    //std::cerr << "Unknown color '" << name << "'" << std::endl;
-    return false;
+    if (pcolor != html_colormap_.end()) {
+      // return html rgb color
+      int i = (*pcolor).second;
+
+      if (r) *r = html_rgb_names[i].r/255.0;
+      if (g) *g = html_rgb_names[i].g/255.0;
+      if (b) *b = html_rgb_names[i].b/255.0;
+      if (a) *a = 1.0;
+
+      return true;
+    }
+
+    pcolor = colormap_.find(name2);
+
+    if (pcolor != colormap_.end()) {
+      // return rgb color
+      int i = (*pcolor).second;
+
+      if (r) *r = rgb_names[i].r/255.0;
+      if (g) *g = rgb_names[i].g/255.0;
+      if (b) *b = rgb_names[i].b/255.0;
+      if (a) *a = 1.0;
+
+      return true;
+    }
+  }
+  else {
+    auto pcolor = colormap_.find(name2);
+
+    if (pcolor != colormap_.end()) {
+      // return rgb color
+      int i = (*pcolor).second;
+
+      if (r) *r = rgb_names[i].r/255.0;
+      if (g) *g = rgb_names[i].g/255.0;
+      if (b) *b = rgb_names[i].b/255.0;
+      if (a) *a = 1.0;
+
+      return true;
+    }
   }
 
-  int i = (*pcolor).second;
-
-  if (r) *r = rgb_names[i].r/255.0;
-  if (g) *g = rgb_names[i].g/255.0;
-  if (b) *b = rgb_names[i].b/255.0;
-  if (a) *a = 1.0;
-
-  return true;
+  //std::cerr << "Unknown color '" << name << "'" << std::endl;
+  return false;
 }
 
 int
 CRGBName::
 numColorNames()
 {
+  // get number of names
   return sizeof(rgb_names)/sizeof(CRGBNameData);
 }
 
@@ -890,6 +990,7 @@ std::string
 CRGBName::
 colorName(int i)
 {
+  // get rgb name for index
   return rgb_names[i].name;
 }
 
@@ -897,6 +998,7 @@ CRGBA
 CRGBName::
 colorRGBA(int i)
 {
+  // get rgb color for index
   const CRGBNameData &data = rgb_names[i];
 
   return CRGBA(data.r/255.0, data.g/255.0, data.b/255.0);

@@ -10,6 +10,9 @@ class CRGBName {
   static bool lookup(const std::string &name, double *r, double *g, double *b, double *a=0);
   static bool lookup(const std::string &name, float *r, float *g, float *b, float *a=0);
 
+  static bool lookupHtml(const std::string &name, double *r, double *g, double *b, double *a=0);
+  static bool lookupHtml(const std::string &name, float *r, float *g, float *b, float *a=0);
+
   static bool toRGBA(const std::string &name, CRGBA &rgba) {
     double r, g, b, a;
 
@@ -17,6 +20,17 @@ class CRGBName {
       return false;
 
     rgba = CRGBA(r, g, b, a);
+
+    return true;
+  }
+
+  static bool toRGB(const std::string &name, CRGB &rgb) {
+    double r, g, b;
+
+    if (! lookup(name, &r, &g, &b))
+      return false;
+
+    rgb = CRGB(r, g, b);
 
     return true;
   }
@@ -30,13 +44,30 @@ class CRGBName {
     return rgba;
   }
 
+  static CRGB toRGB(const std::string &name) {
+    CRGB rgb;
+
+    if (! toRGB(name, rgb))
+      rgb = CRGB(0, 0, 0);
+
+    return rgb;
+  }
+
   static int numColorNames();
+
   static std::string colorName(int i);
   static CRGBA       colorRGBA(int i);
 
  private:
+  static bool lookupName(const std::string &name,
+                         double *r, double *g, double *b, double *a, bool html);
+  static bool lookupName(const std::string &name,
+                         float *r, float *g, float *b, float *a, bool html);
+
+ private:
   typedef std::map<std::string, int> ColorMap;
 
+  static ColorMap html_colormap_;
   static ColorMap colormap_;
   static bool     colormapSet_;
 };
