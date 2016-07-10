@@ -35,20 +35,31 @@ class CRGBName {
     return true;
   }
 
-  static CRGBA toRGBA(const std::string &name) {
+  static CRGBA toRGBA(const std::string &name, const CRGBA &def=CRGBA(0, 0, 0)) {
     CRGBA rgba;
 
     if (! toRGBA(name, rgba))
-      rgba = CRGBA(0, 0, 0);
+      rgba = def;
 
     return rgba;
   }
 
-  static CRGB toRGB(const std::string &name) {
+  static CRGBA toRGBA(const std::string &name, double a, const CRGBA &def=CRGBA(0, 0, 0)) {
+    CRGBA rgba;
+
+    if (! toRGBA(name, rgba))
+      rgba = def;
+
+    rgba.setAlpha(a);
+
+    return rgba;
+  }
+
+  static CRGB toRGB(const std::string &name, const CRGB &def=CRGB(0, 0, 0)) {
     CRGB rgb;
 
     if (! toRGB(name, rgb))
-      rgb = CRGB(0, 0, 0);
+      rgb = def;
 
     return rgb;
   }
