@@ -13,6 +13,8 @@ class CRGBName {
   static bool lookupHtml(const std::string &name, double *r, double *g, double *b, double *a=0);
   static bool lookupHtml(const std::string &name, float *r, float *g, float *b, float *a=0);
 
+  //---
+
   static bool toRGBA(const std::string &name, CRGBA &rgba) {
     double r, g, b, a;
 
@@ -20,17 +22,6 @@ class CRGBName {
       return false;
 
     rgba = CRGBA(r, g, b, a);
-
-    return true;
-  }
-
-  static bool toRGB(const std::string &name, CRGB &rgb) {
-    double r, g, b;
-
-    if (! lookup(name, &r, &g, &b))
-      return false;
-
-    rgb = CRGB(r, g, b);
 
     return true;
   }
@@ -55,6 +46,32 @@ class CRGBName {
     return rgba;
   }
 
+  //---
+
+  static bool toHtmlRGBA(const std::string &name, CRGBA &rgba) {
+    double r, g, b, a;
+
+    if (! lookupHtml(name, &r, &g, &b, &a))
+      return false;
+
+    rgba = CRGBA(r, g, b, a);
+
+    return true;
+  }
+
+  //---
+
+  static bool toRGB(const std::string &name, CRGB &rgb) {
+    double r, g, b;
+
+    if (! lookup(name, &r, &g, &b))
+      return false;
+
+    rgb = CRGB(r, g, b);
+
+    return true;
+  }
+
   static CRGB toRGB(const std::string &name, const CRGB &def=CRGB(0, 0, 0)) {
     CRGB rgb;
 
@@ -63,6 +80,8 @@ class CRGBName {
 
     return rgb;
   }
+
+  //---
 
   static int numColorNames();
 

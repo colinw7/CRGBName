@@ -21,6 +21,7 @@ html_rgb_names[] = {
   { 255,   0, 255, "fuchsia" },
   { 128,   0, 128, "purple"  },
   { 220,  20,  60, "crimson" },
+  {  75,   0, 130, "indigo"  },
 };
 
 // X11 names
@@ -780,9 +781,250 @@ rgb_names[] = {
   { 144, 238, 144, "lightgreen"            , },
 };
 
+namespace {
+
+class Parse {
+ public:
+  Parse(const std::string &str) :
+   str_(str), pos_(0), len_(str_.size()) {
+  }
+
+  int pos() const { return pos_; }
+
+  bool eof() const { return pos_ >= len_; }
+
+  bool isSpace() {
+    return isspace(str_[pos_]);
+  }
+
+  void skipSpace() {
+    while (! eof() && isSpace())
+      ++pos_;
+  }
+
+  bool isChar(char c) const {
+    return (! eof() && str_[pos_] == c);
+  }
+
+  bool isString(const std::string &str) const {
+    int len = str.size();
+
+    if (pos_ + len >= len_)
+      return false;
+
+    for (int i = 0; i < len; ++i) {
+      if (str_[pos_ + i] != str[i])
+        return false;
+    }
+
+    return true;
+  }
+
+  void skipChars(int n) {
+    pos_ += n;
+  }
+
+  void skipChar() {
+    skipChars(1);
+  }
+
+  std::string substr(int i, int len) const {
+    return str_.substr(i, len);
+  }
+
+  std::string substr(int i) const {
+    if (i < pos_)
+      return str_.substr(i, pos_ - i);
+    else
+      return str_.substr(pos_, i - pos_);
+  }
+
+ private:
+  std::string str_;
+  int         pos_ { 0 };
+  int         len_ { 0 };
+};
+
+//---
+
+bool colorStringToValue(const std::string &str, double f, double *value) {
+  if (str.empty()) return false;
+
+  if (str[str.size() - 1] == '%') {
+    std::string str1 = str.substr(0, str.size() - 1);
+
+    double r;
+
+    if (! CStrUtil::toReal(str1, &r))
+      return false;
+
+    *value = r/100.0;
+  }
+  else {
+    double r;
+
+    if (! CStrUtil::toReal(str, &r))
+      return false;
+
+    *value = r/f;
+  }
+
+  *value = std::min(std::max(*value, 0.0), 1.0);
+
+  return true;
+}
+
+bool rgbStringToValue(const std::string &str, double *value) {
+  return colorStringToValue(str, 255, value);
+}
+
+bool stringToRgbValue(const std::string &name, double *r, double *g, double *b, double *a)
+{
+  Parse parse(name);
+
+  parse.skipSpace();
+
+  if      (parse.isString("rgb") || parse.isString("rgba")) {
+    if (parse.isString("rgba"))
+      parse.skipChars(4);
+    else
+      parse.skipChars(3);
+
+    parse.skipSpace();
+
+    if (! parse.isChar('('))
+      return false;
+
+    parse.skipChar();
+
+    parse.skipSpace();
+
+    std::vector<std::string> strs;
+
+    while (! parse.eof()) {
+      int pos = parse.pos();
+
+      while (! parse.eof() && ! parse.isChar(',') && ! parse.isChar(')') && ! parse.isSpace())
+        parse.skipChar();
+
+      std::string str = parse.substr(pos);
+
+      strs.push_back(str);
+
+      parse.skipSpace();
+
+      if (! parse.isChar(',') && ! parse.isChar(')'))
+        return false;
+
+      bool isEnd = parse.isChar(')');
+
+      parse.skipChar();
+
+      parse.skipSpace();
+
+      if (isEnd)
+        break;
+    }
+
+    if (! parse.eof())
+      return false;
+
+    if (strs.size() != 3 && strs.size() != 4)
+      return false;
+
+    if (! rgbStringToValue(strs[0], r)) return false;
+    if (! rgbStringToValue(strs[1], g)) return false;
+    if (! rgbStringToValue(strs[2], b)) return false;
+
+    *a = 1.0;
+
+    if (strs.size() == 4) {
+      if (! colorStringToValue(strs[3], 1.0, a)) return false;
+    }
+  }
+  else if (parse.isString("hsl") || parse.isString("hsla")) {
+    if (parse.isString("hsla"))
+      parse.skipChars(4);
+    else
+      parse.skipChars(3);
+
+    parse.skipSpace();
+
+    if (! parse.isChar('('))
+      return false;
+
+    parse.skipChar();
+
+    parse.skipSpace();
+
+    std::vector<std::string> strs;
+
+    while (! parse.eof()) {
+      int pos = parse.pos();
+
+      while (! parse.eof() && ! parse.isChar(',') && ! parse.isChar(')') && ! parse.isSpace())
+        parse.skipChar();
+
+      std::string str = parse.substr(pos);
+
+      strs.push_back(str);
+
+      parse.skipSpace();
+
+      if (! parse.isChar(',') && ! parse.isChar(')'))
+        return false;
+
+      bool isEnd = parse.isChar(')');
+
+      parse.skipChar();
+
+      parse.skipSpace();
+
+      if (isEnd)
+        break;
+    }
+
+    if (! parse.eof())
+      return false;
+
+    if (strs.size() != 3 && strs.size() != 4)
+      return false;
+
+    double h, s, l;
+
+    if (! colorStringToValue(strs[0], 360, &h)) return false;
+    if (! colorStringToValue(strs[1], 100, &s)) return false;
+    if (! colorStringToValue(strs[2], 100, &l)) return false;
+
+    CHSL hsl(h, s, l);
+
+    CRGB rgb = CRGBUtil::HSLtoRGB(hsl);
+
+    *r = rgb.getRed();
+    *g = rgb.getGreen();
+    *b = rgb.getBlue();
+    *a = 1.0;
+
+    if (strs.size() == 4) {
+      if (! colorStringToValue(strs[3], 1.0, a)) return false;
+    }
+  }
+  else {
+    return false;
+  }
+
+  return true;
+}
+
+}
+
+//------
+
 CRGBName::ColorMap CRGBName::html_colormap_;
 CRGBName::ColorMap CRGBName::colormap_;
 bool               CRGBName::colormapSet_ = false;
+
+//------
 
 bool
 CRGBName::
@@ -834,6 +1076,13 @@ bool
 CRGBName::
 lookupName(const std::string &name, double *r, double *g, double *b, double *a, bool html)
 {
+  if (html) {
+    if (stringToRgbValue(name, r, g, b, a))
+      return true;
+  }
+
+  //---
+
   // remove '-' from names (TODO: optional)
   double r1 = 0, g1 = 0, b1 = 0, a1 = 0;
 
