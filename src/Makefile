@@ -24,6 +24,7 @@ $(CDEBUG) \
 -I. \
 -I../../CStrUtil/include \
 -I../../CMath/include \
+-I../../COS/include \
 -I../../CUtil/include \
 
 clean:
