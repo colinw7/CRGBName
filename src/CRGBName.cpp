@@ -1,4 +1,6 @@
 #include <CRGBName.h>
+#include <CRGBUtil.h>
+#include <CHSL.h>
 #include <CStrUtil.h>
 #include <iostream>
 
