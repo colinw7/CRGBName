@@ -788,15 +788,15 @@ namespace {
 class Parse {
  public:
   Parse(const std::string &str) :
-   str_(str), pos_(0), len_(str_.size()) {
+   str_(str), len_(uint(str_.size())) {
   }
 
   int pos() const { return pos_; }
 
-  bool eof() const { return pos_ >= len_; }
+  bool eof() const { return pos_ >= int(len_); }
 
   bool isSpace() {
-    return isspace(str_[pos_]);
+    return isspace(str_[uint(pos_)]);
   }
 
   void skipSpace() {
@@ -805,17 +805,17 @@ class Parse {
   }
 
   bool isChar(char c) const {
-    return (! eof() && str_[pos_] == c);
+    return (! eof() && str_[uint(pos_)] == c);
   }
 
   bool isString(const std::string &str) const {
-    int len = str.size();
+    auto len = str.size();
 
-    if (pos_ + len >= len_)
+    if (pos_ + int(len) >= int(len_))
       return false;
 
-    for (int i = 0; i < len; ++i) {
-      if (str_[pos_ + i] != str[i])
+    for (size_t i = 0; i < len; ++i) {
+      if (str_[uint(pos_ + int(i))] != str[i])
         return false;
     }
 
@@ -831,20 +831,20 @@ class Parse {
   }
 
   std::string substr(int i, int len) const {
-    return str_.substr(i, len);
+    return str_.substr(size_t(i), size_t(len));
   }
 
   std::string substr(int i) const {
     if (i < pos_)
-      return str_.substr(i, pos_ - i);
+      return str_.substr(size_t(i), size_t(pos_ - i));
     else
-      return str_.substr(pos_, i - pos_);
+      return str_.substr(size_t(pos_), size_t(i - pos_));
   }
 
  private:
   std::string str_;
   int         pos_ { 0 };
-  int         len_ { 0 };
+  uint        len_ { 0 };
 };
 
 //---
@@ -1036,10 +1036,10 @@ lookupHtml(const std::string &name, float *r, float *g, float *b, float *a)
 
   bool flag = lookupName(name, &r1, &g1, &b1, &a1, /*html*/true);
 
-  if (r) *r = r1;
-  if (g) *g = g1;
-  if (b) *b = b1;
-  if (a) *a = a1;
+  if (r) *r = float(r1);
+  if (g) *g = float(g1);
+  if (b) *b = float(b1);
+  if (a) *a = float(a1);
 
   return flag;
 }
@@ -1052,10 +1052,10 @@ lookup(const std::string &name, float *r, float *g, float *b, float *a)
 
   bool flag = lookupName(name, &r1, &g1, &b1, &a1, /*html*/false);
 
-  if (r) *r = r1;
-  if (g) *g = g1;
-  if (b) *b = b1;
-  if (a) *a = a1;
+  if (r) *r = float(r1);
+  if (g) *g = float(g1);
+  if (b) *b = float(b1);
+  if (a) *a = float(a1);
 
   return flag;
 }
@@ -1093,7 +1093,7 @@ lookupName(const std::string &name, double *r, double *g, double *b, double *a, 
   std::string::size_type p = name1.find('-');
 
   while (p != std::string::npos) {
-    name1 = name.substr(0, p) + name.substr(p + 1);
+    name1 = name1.substr(0, p) + name1.substr(p + 1);
 
     p = name1.find('-');
   }
@@ -1101,7 +1101,7 @@ lookupName(const std::string &name, double *r, double *g, double *b, double *a, 
   //---
 
   // check for '#RGB' '#RRGGBB'
-  int len = name1.size();
+  auto len = name1.size();
 
   if (len > 0 && name1[0] == '#') {
     std::string r_str, g_str, b_str, a_str;
@@ -1109,7 +1109,7 @@ lookupName(const std::string &name, double *r, double *g, double *b, double *a, 
     std::string name2 = name1.substr(1);
 
     // '#RGB'
-    if (name2.size() <= 4) {
+    if (name2.size() == 3 || name2.size() == 4) {
       // pad with zeros
       while (name2.size() < 3)
         name2 = "0" + name2;
@@ -1133,20 +1133,23 @@ lookupName(const std::string &name, double *r, double *g, double *b, double *a, 
       g_str = name2.substr(2, 2);
       b_str = name2.substr(4, 2);
 
-      if (name2.size() >= 8)
+      if      (name2.size() == 8)
         a_str = name2.substr(6, 2);
-      else
+      else if (name2.size() == 6)
         a_str = "ff";
+      else
+        return false;
     }
 
-    if (CStrUtil::isBaseInteger(r_str, 16))
-      r1 = CStrUtil::toBaseInteger(r_str, 16)/255.0;
-    if (CStrUtil::isBaseInteger(g_str, 16))
-      g1 = CStrUtil::toBaseInteger(g_str, 16)/255.0;
-    if (CStrUtil::isBaseInteger(b_str, 16))
-      b1 = CStrUtil::toBaseInteger(b_str, 16)/255.0;
-    if (CStrUtil::isBaseInteger(a_str, 16))
-      a1 = CStrUtil::toBaseInteger(a_str, 16)/255.0;
+    if (! CStrUtil::isBaseInteger(r_str, 16)) return false;
+    if (! CStrUtil::isBaseInteger(g_str, 16)) return false;
+    if (! CStrUtil::isBaseInteger(b_str, 16)) return false;
+    if (! CStrUtil::isBaseInteger(a_str, 16)) return false;
+
+    r1 = double(CStrUtil::toBaseInteger(r_str, 16))/255.0;
+    g1 = double(CStrUtil::toBaseInteger(g_str, 16))/255.0;
+    b1 = double(CStrUtil::toBaseInteger(b_str, 16))/255.0;
+    a1 = double(CStrUtil::toBaseInteger(a_str, 16))/255.0;
 
     if (r) *r = r1;
     if (g) *g = g1;
